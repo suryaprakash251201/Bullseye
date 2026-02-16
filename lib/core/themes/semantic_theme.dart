@@ -74,10 +74,10 @@ class SemanticThemeColors extends ThemeExtension<SemanticThemeColors> {
 
   // Define the light theme semantic colors
   static const light = SemanticThemeColors(
-    success: Color(0xFF00C853),
-    warning: Color(0xFFFFD600),
-    error: Color(0xFFD50000),
-    info: Color(0xFF00B0FF),
+    success: Color(0xFF00E676), // Brighter Green
+    warning: Color(0xFFFFEA00), // Brighter Yellow
+    error: Color(0xFFFF1744), // Brighter Red
+    info: Color(0xFF2979FF), // Matches Primary
     terminalBg: Color(0xFF1E1E1E),
     terminalText: Color(0xFF00FF41),
     onSuccess: Colors.white,

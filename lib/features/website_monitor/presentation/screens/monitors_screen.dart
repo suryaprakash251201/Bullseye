@@ -6,6 +6,8 @@ import '../providers/monitor_provider.dart';
 import '../providers/monitor_filter_provider.dart';
 import '../../../../shared/models/website_monitor.dart';
 import '../screens/add_monitor_screen.dart';
+import '../screens/edit_monitor_screen.dart';
+import '../screens/monitor_details_screen.dart';
 
 class MonitorsScreen extends ConsumerWidget {
   const MonitorsScreen({super.key});
@@ -137,9 +139,18 @@ class MonitorsScreen extends ConsumerWidget {
         if (filteredMonitors.isEmpty)
           _EmptyState(filter: filter),
         for (final monitor in filteredMonitors) ...[
-          _EndpointCard(monitor: monitor, onDelete: () {
-            ref.read(monitorsProvider.notifier).removeMonitor(monitor.id);
-          }),
+          _EndpointCard(
+            monitor: monitor,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => MonitorDetailsScreen(monitor: monitor)));
+            },
+            onEdit: () {
+               Navigator.push(context, MaterialPageRoute(builder: (_) => EditMonitorScreen(monitor: monitor)));
+            },
+            onDelete: () {
+              ref.read(monitorsProvider.notifier).removeMonitor(monitor.id);
+            },
+          ),
           const SizedBox(height: 12),
         ],
         const SizedBox(height: 100),
@@ -219,7 +230,7 @@ class _SummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isActive ? color.withAlpha(30) : (theme.cardTheme.color ?? theme.colorScheme.surface),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isActive ? color.withAlpha(150) : (theme.cardTheme.shape as RoundedRectangleBorder?)?.side.color ?? Colors.transparent,
             width: isActive ? 1.5 : 1,
@@ -247,9 +258,17 @@ class _SummaryCard extends StatelessWidget {
 class _EndpointCard extends StatelessWidget {
   final WebsiteMonitor monitor;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
+  final VoidCallback onTap;
 
-  const _EndpointCard({required this.monitor, required this.onDelete});
+  const _EndpointCard({
+    required this.monitor,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onTap,
+  });
 
+  @override
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -257,113 +276,137 @@ class _EndpointCard extends StatelessWidget {
     final isUp = monitor.currentStatus == MonitorStatus.up;
     final statusColor = isUp ? semantic.success : semantic.error;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(80)),
+    return Material(
+      color: theme.cardTheme.color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(80)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: statusColor.withAlpha(100), blurRadius: 6)],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  monitor.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withAlpha(30),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isUp ? 'UP' : 'DOWN',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: onDelete,
-                child: Icon(Icons.delete_outline, color: theme.colorScheme.onSurface.withAlpha(100), size: 20),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            monitor.url,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(150),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    '${monitor.averageResponseTime?.inMilliseconds ?? '--'}ms',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: statusColor.withAlpha(100), blurRadius: 6)],
                     ),
                   ),
-                  Text(
-                    'Response time',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      monitor.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isUp ? 'UP' : 'DOWN',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton(
+                    icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurface.withAlpha(150), size: 20),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [Icon(Icons.delete, size: 20, color: theme.colorScheme.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: theme.colorScheme.error))],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'edit') onEdit();
+                      if (value == 'delete') onDelete();
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                monitor.url,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withAlpha(150),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${monitor.averageResponseTime?.inMilliseconds ?? '--'}ms',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Response time',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: 120,
+                    height: 40,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: _generateSpots(),
+                            isCurved: true,
+                            color: theme.colorScheme.primary,
+                            barWidth: 2,
+                            dotData: const FlDotData(show: false),
+                            belowBarData: BarAreaData(show: true, color: theme.colorScheme.primary.withAlpha(30)),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-              const Spacer(),
-              SizedBox(
-                width: 120,
-                height: 40,
-                child: LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: _generateSpots(),
-                        isCurved: true,
-                        color: theme.colorScheme.primary,
-                        barWidth: 2,
-                        dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(show: true, color: theme.colorScheme.primary.withAlpha(30)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
-        ],
+        ),
       ),
     );
+
   }
 
   List<FlSpot> _generateSpots() {

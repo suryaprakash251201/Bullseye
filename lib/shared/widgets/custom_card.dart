@@ -25,11 +25,12 @@ class CustomCard extends StatelessWidget {
 
     return Material(
       color: theme.cardTheme.color,
-      borderRadius: BorderRadius.circular(16),
-      shape: theme.cardTheme.shape,
+      shape: theme.cardTheme.shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: theme.cardTheme.elevation ?? 0,
+      shadowColor: theme.cardTheme.shadowColor,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        customBorder: theme.cardTheme.shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Container(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -48,7 +49,8 @@ class CustomCard extends StatelessWidget {
               const Spacer(),
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: TextStyle(
+                  fontFamily: GoogleFonts.inter().fontFamily,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface,
@@ -59,7 +61,8 @@ class CustomCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
+                style: TextStyle(
+                  fontFamily: GoogleFonts.inter().fontFamily,
                   fontSize: 12,
                   color: colorScheme.onSurface.withAlpha(150),
                 ),

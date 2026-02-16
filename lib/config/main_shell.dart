@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/themes/semantic_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../shared/widgets/app_bottom_nav.dart';
 import '../shared/widgets/custom_card.dart';
 import '../shared/widgets/section_header.dart';
@@ -54,7 +55,6 @@ class ToolsGridScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final semantic = theme.extension<SemanticThemeColors>() ?? SemanticThemeColors.light; // Fallback to avoid crash
 
     return Scaffold(
       body: SafeArea(
@@ -88,80 +88,287 @@ class ToolsGridScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             const SectionHeader(title: 'MONITORING'),
-            _buildGrid([
-              _ToolData(Icons.monitor_heart, 'Monitors', 'Uptime', semantic.success, '/monitors'),
-              _ToolData(Icons.speed, 'Status', 'Health', theme.colorScheme.primary, '/status'),
-            ], context, ref),
-            const SizedBox(height: 24),
-
             const SectionHeader(title: 'REMOTE MANAGEMENT'),
-            _buildGrid([
-              _ToolData(Icons.terminal, 'SSH Client', 'Secure shell', theme.colorScheme.primary, '/ssh'),
-              _ToolData(Icons.folder_shared, 'SFTP Client', 'File transfer', Colors.purple, '/ftp'),
-            ], context, ref),
+            const SizedBox(height: 12),
+            _RemoteManagementCard(
+              icon: Icons.terminal,
+              title: 'SSH Client',
+              subtitle: 'Secure shell access',
+              color: Colors.blue,
+              onTap: () => Navigator.pushNamed(context, '/ssh'),
+            ),
+            const SizedBox(height: 12),
+            _RemoteManagementCard(
+              icon: Icons.folder,
+              title: 'SFTP Client',
+              subtitle: 'File transfer protocol',
+              color: Colors.purple,
+              onTap: () => Navigator.pushNamed(context, '/ftp'),
+            ),
             const SizedBox(height: 24),
 
-            const SectionHeader(title: 'NETWORK TOOLS'),
-            _buildGrid([
-              _ToolData(Icons.cell_tower, 'Ping', 'ICMP check', Colors.blue, '/ping'),
-              _ToolData(Icons.route, 'Traceroute', 'Path trace', semantic.success, '/traceroute'),
-              _ToolData(Icons.dns, 'DNS Lookup', 'Records', Colors.teal, '/dns'),
-              _ToolData(Icons.radar, 'Port Scan', 'Open ports', semantic.warning, '/port-checker'),
-              _ToolData(Icons.lan, 'Network Scan', 'LAN devices', semantic.success, '/network-scanner'),
-              _ToolData(Icons.wifi, 'WiFi Info', 'Signal', semantic.info, '/wifi'),
-            ], context, ref),
+            const SectionHeader(title: 'NETWORK UTILITIES'),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ping - Large Card
+                Expanded(
+                  flex: 4,
+                  child: _LargeToolCard(
+                    icon: Icons.wifi_tethering, 
+                    title: 'Ping', 
+                    subtitle: 'Latency check', 
+                    color: const Color(0xFF00C853), // Green
+                    onTap: () => Navigator.pushNamed(context, '/ping'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Right Column
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    children: [
+                      _SmallToolCard(
+                        icon: Icons.dns, 
+                        title: 'DNS Lookup', 
+                        color: Colors.orange, 
+                        onTap: () => Navigator.pushNamed(context, '/dns'),
+                      ),
+                      const SizedBox(height: 12),
+                      _SmallToolCard(
+                        icon: Icons.timeline, 
+                        title: 'Traceroute', 
+                        color: Colors.teal, 
+                        onTap: () => Navigator.pushNamed(context, '/traceroute'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Status Monitor - Wide
+            SizedBox(
+              height: 120,
+              child: CustomCard(
+                title: 'Status Monitor',
+                subtitle: 'Check uptime',
+                icon: Icons.monitor_heart,
+                iconColor: Colors.blue,
+                onTap: () {
+                   ref.read(currentTabProvider.notifier).set(2);
+                },
+              ),
+            ),
+
             const SizedBox(height: 24),
 
-            const SectionHeader(title: 'DIAGNOSTICS'),
-            _buildGrid([
-              _ToolData(Icons.security, 'SSL Check', 'Certificates', semantic.error, '/ssl'),
-              _ToolData(Icons.info_outline, 'Whois', 'Domain info', Colors.indigo, '/whois'),
-              _ToolData(Icons.text_snippet, 'Logs', 'View', semantic.warning, '/logs'),
-            ], context, ref),
+            const SectionHeader(title: 'QUICK ACTIONS'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _QuickActionItem(icon: Icons.speed, label: 'Speedtest', onTap: () => Navigator.pushNamed(context, '/speedtest'))),
+                const SizedBox(width: 12),
+                Expanded(child: _QuickActionItem(icon: Icons.lan, label: 'Port Scan', onTap: () => Navigator.pushNamed(context, '/port-checker'))),
+                const SizedBox(width: 12),
+                Expanded(child: _QuickActionItem(icon: Icons.calculate, label: 'Subnet', onTap: () {})),
+              ],
+            ),
             const SizedBox(height: 100),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildGrid(List<_ToolData> tools, BuildContext context, WidgetRef ref) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 200,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.2,
-      ),
-      itemCount: tools.length,
-      itemBuilder: (context, index) {
-        final tool = tools[index];
-        return CustomCard(
-          title: tool.title,
-          subtitle: tool.subtitle,
-          icon: tool.icon,
-          iconColor: tool.color,
-          onTap: () {
-            if (tool.route == '/monitors') {
-               ref.read(currentTabProvider.notifier).set(2);
-            } else {
-              Navigator.pushNamed(context, tool.route);
-            }
-          },
-        );
-      },
-    );
-  }
 }
 
-class _ToolData {
+class _RemoteManagementCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
-  final String route;
-  const _ToolData(this.icon, this.title, this.subtitle, this.color, this.route);
+  final VoidCallback onTap;
+
+  const _RemoteManagementCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(subtitle, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 13, color: Colors.grey[500])),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey[300]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LargeToolCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _LargeToolCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 13, color: Colors.grey[500])),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallToolCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SmallToolCard({required this.icon, required this.title, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 74,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(title, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionItem({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.grey[700], size: 24),
+              ),
+              const SizedBox(height: 8),
+              Text(label, style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 

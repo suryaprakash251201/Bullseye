@@ -13,8 +13,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final semantic = theme.extension<SemanticThemeColors>() ?? SemanticThemeColors.light;
+
     final monitors = ref.watch(monitorsProvider);
     final up = monitors.where((m) => m.currentStatus == MonitorStatus.up).length;
     final down = monitors.where((m) => m.currentStatus == MonitorStatus.down).length;
@@ -183,7 +182,7 @@ class _SystemStatusCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: statusColor.withAlpha(20),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: statusColor.withAlpha(50)),
       ),
       child: Row(
@@ -219,6 +218,30 @@ class _SystemStatusCard extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withAlpha(180),
                   ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    FilledButton(
+                      onPressed: () {},
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E293B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      child: const Text('View Logs'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.tonal(
+                      onPressed: () {},
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1E293B),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -279,17 +302,23 @@ class _StatCard extends StatelessWidget {
     
     return Material(
       color: theme.cardTheme.color,
-      borderRadius: BorderRadius.circular(16),
       shape: theme.cardTheme.shape,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 12),
               Text(
                 value,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -362,10 +391,9 @@ class _QuickAction extends StatelessWidget {
 
     return Material(
       color: theme.cardTheme.color,
-      borderRadius: BorderRadius.circular(14),
       shape: theme.cardTheme.shape,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
           width: 80,

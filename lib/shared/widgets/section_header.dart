@@ -13,6 +13,7 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
       child: Row(
@@ -20,13 +21,15 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: GoogleFonts.inter(
+            style: TextStyle(
+              fontFamily: GoogleFonts.inter().fontFamily,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
               letterSpacing: 1.2,
             ),
           ),
+          // ignore: use_null_aware_elements
           if (action != null) action!,
         ],
       ),

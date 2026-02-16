@@ -20,6 +20,7 @@ import 'features/whois_lookup/presentation/screens/whois_lookup_screen.dart';
 import 'features/bandwidth_monitor/presentation/screens/bandwidth_monitor_screen.dart';
 import 'features/website_monitor/presentation/screens/add_monitor_screen.dart';
 import 'features/connections/presentation/screens/add_connection_screen.dart';
+import 'features/speedtest/presentation/screens/speedtest_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +79,7 @@ class BullseyeApp extends ConsumerWidget {
         '/bandwidth': (context) => const BandwidthMonitorScreen(),
         '/add-monitor': (context) => const AddMonitorScreen(),
         '/add-connection': (context) => const AddConnectionScreen(),
+        '/speedtest': (context) => const SpeedTestScreen(),
       },
     );
   }

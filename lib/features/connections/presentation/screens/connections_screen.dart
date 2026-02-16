@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../shared/models/connection_profile.dart';
-import '../../../../shared/widgets/common_widgets.dart';
+
 import '../../../../core/themes/app_theme.dart';
 import '../../../ssh/presentation/screens/ssh_client_screen.dart';
 import '../../../ftp/presentation/screens/ftp_client_screen.dart';
@@ -17,8 +18,7 @@ class ConnectionsScreen extends ConsumerStatefulWidget {
 
 class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  // ignore: prefer_final_fields
-  String _searchQuery = '';
+
 
   @override
   void initState() {
@@ -37,11 +37,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
     final theme = Theme.of(context);
     final connections = ref.watch(connectionsProvider);
 
-    final filtered = _searchQuery.isEmpty
-        ? connections
-        : connections.where((c) =>
-            c.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            c.host.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filtered = connections;
 
     final sshConns = filtered.where((c) => c.type == ConnectionType.ssh).toList();
     final ftpConns = filtered.where((c) => c.type == ConnectionType.ftp).toList();
@@ -49,7 +45,10 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Connections'),
+        title: Text('Connections', style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontWeight: FontWeight.w700)),
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -63,18 +62,45 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
               await _openConnection(context, ref, selected);
             },
           ),
+          const SizedBox(width: 8),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: 'All (${filtered.length})'),
-            Tab(text: 'SSH (${sshConns.length})'),
-            Tab(text: 'FTP (${ftpConns.length})'),
-            Tab(text: 'SFTP (${sftpConns.length})'),
-          ],
-          indicatorColor: theme.colorScheme.primary,
-          labelColor: theme.colorScheme.primary,
-          unselectedLabelColor: theme.colorScheme.onSurface.withAlpha(120),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(10),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor: theme.colorScheme.onSurface.withAlpha(150),
+              labelStyle: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontWeight: FontWeight.w600),
+              padding: const EdgeInsets.all(6),
+              tabs: [
+                Tab(text: 'All (${filtered.length})'),
+                Tab(text: 'SSH (${sshConns.length})'),
+                Tab(text: 'FTP (${ftpConns.length})'),
+                Tab(text: 'SFTP (${sftpConns.length})'),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -93,8 +119,11 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
             MaterialPageRoute(builder: (_) => const AddConnectionScreen()),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('New Connection'),
+        icon: const Icon(Icons.add_link),
+        label: const Text('Add Connection'),
+        elevation: 4,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
       ),
     );
   }
@@ -108,16 +137,38 @@ class _ConnectionList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (connections.isEmpty) {
-      return const EmptyState(
-        icon: Icons.cable_outlined,
-        title: 'No connections found',
-        subtitle: 'Add a new SSH, FTP, or SFTP connection',
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.hub_outlined, size: 60, color: Theme.of(context).colorScheme.primary.withAlpha(150)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No connections yet',
+              style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add a new SSH, FTP, or SFTP connection\nto get started.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 14, color: Colors.grey[500]),
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 100),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: connections.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final conn = connections[index];
         return _ConnectionTile(connection: conn);
@@ -145,11 +196,11 @@ class _ConnectionTile extends ConsumerWidget {
   Color _getColor() {
     switch (connection.type) {
       case ConnectionType.ssh:
-        return Colors.blueGrey;
+        return const Color(0xFF2979FF); // Blue
       case ConnectionType.ftp:
-        return Colors.deepPurple;
+        return const Color(0xFF7C4DFF); // Deep Purple
       case ConnectionType.sftp:
-        return AppTheme.teal;
+        return const Color(0xFF00BFA5); // Teal accent
     }
   }
 
@@ -158,85 +209,116 @@ class _ConnectionTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final color = _getColor();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withAlpha(25),
-            borderRadius: BorderRadius.circular(10),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Icon(_getIcon(), color: color, size: 22),
-        ),
-        title: Text(
-          connection.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(connection.connectionString),
-            if (connection.lastConnectedAt != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  'Last connected ${_formatLastConnected(connection.lastConnectedAt!)}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withAlpha(120),
-                  ),
-                ),
-              ),
-            if (connection.group != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _connect(context, ref),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withAlpha(20),
-                    borderRadius: BorderRadius.circular(4),
+                    color: color.withAlpha(25),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(
-                    connection.group!,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: theme.colorScheme.primary,
-                    ),
+                  child: Icon(_getIcon(), color: color, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        connection.name,
+                        style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.link, size: 12, color: Colors.grey[400]),
+                          const SizedBox(width: 4),
+                          Text(
+                            connection.connectionString,
+                            style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'connect':
-                _connect(context, ref);
-                break;
-              case 'edit':
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddConnectionScreen(editConnection: connection),
-                  ),
-                );
-                break;
-              case 'delete':
-                _confirmDelete(context, ref);
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'connect', child: Text('Connect')),
-            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Text('Delete', style: TextStyle(color: AppTheme.error)),
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: Colors.grey[400]),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'connect':
+                        _connect(context, ref);
+                        break;
+                      case 'edit':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AddConnectionScreen(editConnection: connection),
+                          ),
+                        );
+                        break;
+                      case 'delete':
+                        _confirmDelete(context, ref);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'connect',
+                      child: Row(
+                        children: [
+                          Icon(Icons.play_arrow_rounded, color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 12),
+                          const Text('Connect'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 20),
+                          const SizedBox(width: 12),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          const SizedBox(width: 12),
+                          const Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        onTap: () => _connect(context, ref),
       ),
     );
   }
@@ -245,22 +327,13 @@ class _ConnectionTile extends ConsumerWidget {
     await _openConnection(context, ref, connection);
   }
 
-  String _formatLastConnected(DateTime value) {
-    final diff = DateTime.now().difference(value);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays < 30) return '${diff.inDays}d ago';
-    final months = (diff.inDays / 30).floor();
-    return '${months}mo ago';
-  }
-
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Connection'),
         content: Text('Delete "${connection.name}"? This cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -363,3 +436,6 @@ Future<void> _openConnection(
       break;
   }
 }
+
+
+
