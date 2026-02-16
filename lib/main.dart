@@ -14,13 +14,22 @@ import 'features/wifi_analyzer/presentation/screens/wifi_analyzer_screen.dart';
 import 'features/ping_traceroute/presentation/screens/ping_traceroute_screen.dart';
 import 'features/dns_tools/presentation/screens/dns_lookup_screen.dart';
 import 'features/port_checker/presentation/screens/port_checker_screen.dart';
+import 'features/port_checker/presentation/screens/nmap_scanner_screen.dart';
 import 'features/network_scanner/presentation/screens/network_scanner_screen.dart';
 import 'features/ssl_inspector/presentation/screens/ssl_inspector_screen.dart';
 import 'features/whois_lookup/presentation/screens/whois_lookup_screen.dart';
 import 'features/bandwidth_monitor/presentation/screens/bandwidth_monitor_screen.dart';
+import 'features/speedtest/presentation/screens/speedtest_screen.dart';
+import 'features/speedtest/presentation/screens/ookla_speedtest_screen.dart';
+import 'features/dns_tools/presentation/screens/subnet_calculator_screen.dart';
+import 'features/dns_tools/presentation/screens/http_headers_screen.dart';
+import 'features/dns_tools/presentation/screens/ip_geolocation_screen.dart';
+import 'features/dns_tools/presentation/screens/hash_generator_screen.dart';
+import 'features/dns_tools/presentation/screens/base64_tool_screen.dart';
+import 'features/dns_tools/presentation/screens/user_agent_parser_screen.dart';
+import 'features/dns_tools/presentation/screens/cron_parser_screen.dart';
 import 'features/website_monitor/presentation/screens/add_monitor_screen.dart';
 import 'features/connections/presentation/screens/add_connection_screen.dart';
-import 'features/speedtest/presentation/screens/speedtest_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,13 +82,22 @@ class BullseyeApp extends ConsumerWidget {
         '/ping': (context) => const PingTracerouteScreen(),
         '/dns': (context) => const DNSLookupScreen(),
         '/port-checker': (context) => const PortCheckerScreen(),
+        '/nmap': (context) => const NmapScannerScreen(),
         '/network-scanner': (context) => const NetworkScannerScreen(),
         '/ssl': (context) => const SSLInspectorScreen(),
         '/whois': (context) => const WhoisLookupScreen(),
         '/bandwidth': (context) => const BandwidthMonitorScreen(),
+        '/speedtest': (context) => const SpeedTestScreen(),
+        '/ookla-speedtest': (context) => const OoklaSpeedtestScreen(),
+        '/subnet': (context) => const SubnetCalculatorScreen(),
+        '/http-headers': (context) => const HttpHeadersScreen(),
+        '/ip-geo': (context) => const IpGeolocationScreen(),
+        '/hash': (context) => const HashGeneratorScreen(),
+        '/base64': (context) => const Base64ToolScreen(),
+        '/user-agent': (context) => const UserAgentParserScreen(),
+        '/cron': (context) => const CronParserScreen(),
         '/add-monitor': (context) => const AddMonitorScreen(),
         '/add-connection': (context) => const AddConnectionScreen(),
-        '/speedtest': (context) => const SpeedTestScreen(),
       },
     );
   }

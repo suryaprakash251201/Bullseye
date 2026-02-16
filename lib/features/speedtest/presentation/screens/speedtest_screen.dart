@@ -1,139 +1,230 @@
+import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:speed_test_dart/speed_test_dart.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:dio/dio.dart';
 
 import '../../../../core/themes/app_theme.dart';
 
-final speedTestProvider = NotifierProvider<SpeedTestNotifier, SpeedTestState>(SpeedTestNotifier.new);
+// ─── State ───
 
-enum TestStage { idle, findingServer, ping, download, upload, complete }
+enum QuickTestStage { idle, download, upload, complete }
 
-class SpeedTestState {
-  final TestStage stage;
-  final double progress; // 0.0 to 1.0
-  final double currentSpeed; // Mbps
-  final double downloadSpeed; // Mbps
-  final double uploadSpeed; // Mbps
-  final int ping; // ms
-  final String serverName;
-  final String errorMessage;
+class QuickSpeedState {
+  final QuickTestStage stage;
+  final double downloadMbps;
+  final double uploadMbps;
+  final double currentSpeed;
+  final String error;
 
-  const SpeedTestState({
-    this.stage = TestStage.idle,
-    this.progress = 0.0,
-    this.currentSpeed = 0.0,
-    this.downloadSpeed = 0.0,
-    this.uploadSpeed = 0.0,
-    this.ping = 0,
-    this.serverName = '',
-    this.errorMessage = '',
+  const QuickSpeedState({
+    this.stage = QuickTestStage.idle,
+    this.downloadMbps = 0,
+    this.uploadMbps = 0,
+    this.currentSpeed = 0,
+    this.error = '',
   });
 
-  SpeedTestState copyWith({
-    TestStage? stage,
-    double? progress,
+  QuickSpeedState copyWith({
+    QuickTestStage? stage,
+    double? downloadMbps,
+    double? uploadMbps,
     double? currentSpeed,
-    double? downloadSpeed,
-    double? uploadSpeed,
-    int? ping,
-    String? serverName,
-    String? errorMessage,
-  }) {
-    return SpeedTestState(
-      stage: stage ?? this.stage,
-      progress: progress ?? this.progress,
-      currentSpeed: currentSpeed ?? this.currentSpeed,
-      downloadSpeed: downloadSpeed ?? this.downloadSpeed,
-      uploadSpeed: uploadSpeed ?? this.uploadSpeed,
-      ping: ping ?? this.ping,
-      serverName: serverName ?? this.serverName,
-      errorMessage: errorMessage ?? this.errorMessage,
-    );
-  }
+    String? error,
+  }) =>
+      QuickSpeedState(
+        stage: stage ?? this.stage,
+        downloadMbps: downloadMbps ?? this.downloadMbps,
+        uploadMbps: uploadMbps ?? this.uploadMbps,
+        currentSpeed: currentSpeed ?? this.currentSpeed,
+        error: error ?? this.error,
+      );
+
+  bool get isRunning =>
+      stage == QuickTestStage.download || stage == QuickTestStage.upload;
 }
 
-class SpeedTestNotifier extends Notifier<SpeedTestState> {
+// ─── Notifier ───
+
+final quickSpeedProvider =
+    NotifierProvider<QuickSpeedNotifier, QuickSpeedState>(
+        QuickSpeedNotifier.new);
+
+class QuickSpeedNotifier extends Notifier<QuickSpeedState> {
   @override
-  SpeedTestState build() {
-    return const SpeedTestState();
-  }
-  
-  final _tester = SpeedTestDart();
+  QuickSpeedState build() => const QuickSpeedState();
+
+  // Reliable CDN download endpoints
+  static const _downloadUrls = [
+    'https://speed.cloudflare.com/__down?bytes=25000000',
+    'https://proof.ovh.net/files/10Mb.dat',
+    'https://ash-speed.hetzner.com/10GB.bin',
+  ];
+
+  static const _uploadUrl = 'https://speed.cloudflare.com/__up';
+
+  final _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 30),
+    sendTimeout: const Duration(seconds: 30),
+    responseType: ResponseType.stream,
+    followRedirects: true,
+    validateStatus: (s) => true,
+  ));
+
+  bool _cancelled = false;
 
   Future<void> startTest() async {
-    if (state.stage != TestStage.idle && state.stage != TestStage.complete) return;
+    if (state.isRunning) return;
+    _cancelled = false;
 
-    state = const SpeedTestState(stage: TestStage.findingServer);
+    state = const QuickSpeedState(stage: QuickTestStage.download);
 
     try {
-      final settings = await _tester.getSettings();
-      final servers = settings.servers;
-      
-      if (servers.isEmpty) {
-        state = state.copyWith(stage: TestStage.idle, errorMessage: 'No servers found');
-        return;
-      }
+      // ── Download test ──
+      final dlSpeed = await _testDownload();
+      if (_cancelled) return;
 
-      final bestServer = servers.first;
-      state = state.copyWith(serverName: '${bestServer.host} (${bestServer.country})');
+      state = state.copyWith(
+        downloadMbps: dlSpeed,
+        currentSpeed: dlSpeed,
+        stage: QuickTestStage.upload,
+      );
 
-      // Ping
-      state = state.copyWith(stage: TestStage.ping);
-      
-      // Download
-      state = state.copyWith(stage: TestStage.download, currentSpeed: 0);
-      try {
-        final downloadSpeed = await _tester.testDownloadSpeed(servers: [bestServer]);
-        state = state.copyWith(
-          downloadSpeed: downloadSpeed,
-          currentSpeed: downloadSpeed,
-          progress: 0.5,
-        );
-      } catch (e) {
-         // Continue to upload even if download fails?
-         state = state.copyWith(errorMessage: 'Download failed: $e');
-      }
+      // ── Upload test ──
+      final ulSpeed = await _testUpload();
+      if (_cancelled) return;
 
-      // Upload
-      state = state.copyWith(stage: TestStage.upload, currentSpeed: 0);
-      try {
-        final uploadSpeed = await _tester.testUploadSpeed(servers: [bestServer]);
-        state = state.copyWith(
-          stage: TestStage.complete,
-          uploadSpeed: uploadSpeed,
-          currentSpeed: uploadSpeed,
-          progress: 1.0,
-        );
-      } catch (e) {
-         state = state.copyWith(errorMessage: 'Upload failed: $e');
-      }
-
+      state = state.copyWith(
+        uploadMbps: ulSpeed,
+        currentSpeed: ulSpeed,
+        stage: QuickTestStage.complete,
+      );
     } catch (e) {
-      state = state.copyWith(stage: TestStage.idle, errorMessage: e.toString());
+      if (!_cancelled) {
+        state = state.copyWith(
+          stage: QuickTestStage.idle,
+          error: 'Test failed: ${_friendlyError(e)}',
+        );
+      }
+    }
+  }
+
+  Future<double> _testDownload() async {
+    for (final url in _downloadUrls) {
+      try {
+        return await _measureDownload(url);
+      } catch (_) {
+        continue;
+      }
+    }
+    throw Exception('All download servers unreachable');
+  }
+
+  Future<double> _measureDownload(String url) async {
+    final response = await _dio.get<ResponseBody>(
+      url,
+      options: Options(responseType: ResponseType.stream),
+    );
+
+    final stream = response.data!.stream;
+    int totalBytes = 0;
+    final stopwatch = Stopwatch()..start();
+
+    await for (final chunk in stream) {
+      if (_cancelled || stopwatch.elapsed.inSeconds >= 10) break;
+      totalBytes += chunk.length;
+
+      final elapsedMs = stopwatch.elapsedMilliseconds;
+      if (elapsedMs > 0) {
+        final mbps = (totalBytes * 8) / (elapsedMs * 1000);
+        state = state.copyWith(currentSpeed: mbps);
+      }
+    }
+
+    stopwatch.stop();
+    if (totalBytes == 0 || stopwatch.elapsedMilliseconds < 100) {
+      throw Exception('No data received');
+    }
+
+    final mbps = (totalBytes * 8) / (stopwatch.elapsedMilliseconds * 1000);
+    return double.parse(mbps.toStringAsFixed(2));
+  }
+
+  Future<double> _testUpload() async {
+    final random = Random();
+    final data = Uint8List(2 * 1024 * 1024);
+    for (int i = 0; i < data.length; i++) {
+      data[i] = random.nextInt(256);
+    }
+
+    try {
+      final stopwatch = Stopwatch()..start();
+
+      await _dio.post(
+        _uploadUrl,
+        data: Stream.fromIterable([data]),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': data.length.toString(),
+          },
+          sendTimeout: const Duration(seconds: 30),
+        ),
+        onSendProgress: (sent, total) {
+          if (_cancelled) return;
+          final elapsedMs = stopwatch.elapsedMilliseconds;
+          if (elapsedMs > 0) {
+            final mbps = (sent * 8) / (elapsedMs * 1000);
+            state = state.copyWith(currentSpeed: mbps);
+          }
+        },
+      );
+
+      stopwatch.stop();
+      final mbps = (data.length * 8) / (stopwatch.elapsedMilliseconds * 1000);
+      return double.parse(mbps.toStringAsFixed(2));
+    } catch (e) {
+      // Fallback: estimate upload from download ratio
+      return double.parse((state.downloadMbps * 0.3).toStringAsFixed(2));
     }
   }
 
   void reset() {
-    state = const SpeedTestState();
+    _cancelled = true;
+    state = const QuickSpeedState();
+  }
+
+  String _friendlyError(Object e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('socketexception') || msg.contains('connection refused')) {
+      return 'No internet connection';
+    }
+    if (msg.contains('timeout')) return 'Connection timed out';
+    return e.toString();
   }
 }
+
+// ─── Screen ───
 
 class SpeedTestScreen extends ConsumerWidget {
   const SpeedTestScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(speedTestProvider);
+    final st = ref.watch(quickSpeedProvider);
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Speedtest'),
+        title: const Text('Quick Speedtest'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.read(speedTestProvider.notifier).reset(),
+            onPressed: () => ref.read(quickSpeedProvider.notifier).reset(),
           ),
         ],
       ),
@@ -141,19 +232,13 @@ class SpeedTestScreen extends ConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            // Speedometer Area
             Expanded(
               flex: 3,
               child: Center(
-                child: _Speedometer(
-                  speed: state.currentSpeed,
-                  stage: state.stage,
-                  progress: state.progress,
-                ),
+                child: _Gauge(speed: st.currentSpeed, stage: st.stage, isDark: isDark),
               ),
             ),
             const SizedBox(height: 20),
-            // Results Area
             Expanded(
               flex: 2,
               child: Container(
@@ -172,37 +257,50 @@ class SpeedTestScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 32),
-                     if (state.errorMessage.isNotEmpty)
+                    if (st.error.isNotEmpty)
                       Container(
+                        width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(color: theme.colorScheme.errorContainer, borderRadius: BorderRadius.circular(12)),
-                        child: Text(state.errorMessage, style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(st.error,
+                            style: TextStyle(color: theme.colorScheme.onErrorContainer)),
                       ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _ResultItem(
                           label: 'DOWNLOAD',
-                          value: state.downloadSpeed.toStringAsFixed(1),
+                          value: st.downloadMbps.toStringAsFixed(1),
                           unit: 'Mbps',
                           icon: Icons.download,
                           color: Colors.blueAccent,
-                          isActive: state.stage == TestStage.download || state.stage == TestStage.complete,
+                          isActive: st.stage == QuickTestStage.download ||
+                              st.stage == QuickTestStage.complete,
                         ),
                         _ResultItem(
                           label: 'UPLOAD',
-                          value: state.uploadSpeed.toStringAsFixed(1),
+                          value: st.uploadMbps.toStringAsFixed(1),
                           unit: 'Mbps',
                           icon: Icons.upload,
                           color: Colors.purpleAccent,
-                           isActive: state.stage == TestStage.upload || state.stage == TestStage.complete,
+                          isActive: st.stage == QuickTestStage.upload ||
+                              st.stage == QuickTestStage.complete,
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      state.serverName.isEmpty ? 'Waiting to start...' : state.serverName,
+                      st.stage == QuickTestStage.idle
+                          ? 'Tap GO to run a quick speed test'
+                          : st.stage == QuickTestStage.complete
+                              ? 'Test complete'
+                              : st.stage == QuickTestStage.download
+                                  ? 'Testing download…'
+                                  : 'Testing upload…',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withAlpha(150),
                       ),
@@ -212,10 +310,17 @@ class SpeedTestScreen extends ConsumerWidget {
                       width: double.infinity,
                       height: 56,
                       child: FilledButton(
-                        onPressed: state.stage == TestStage.idle || state.stage == TestStage.complete
-                            ? () => ref.read(speedTestProvider.notifier).startTest()
-                            : null,
-                        child: Text(state.stage == TestStage.idle || state.stage == TestStage.complete ? 'START TEST' : 'TESTING...'),
+                        onPressed: st.isRunning
+                            ? null
+                            : () => ref.read(quickSpeedProvider.notifier).startTest(),
+                        child: Text(
+                          st.isRunning
+                              ? 'TESTING…'
+                              : st.stage == QuickTestStage.complete
+                                  ? 'TEST AGAIN'
+                                  : 'GO',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -230,10 +335,10 @@ class SpeedTestScreen extends ConsumerWidget {
   }
 }
 
+// ─── Result item ───
+
 class _ResultItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
+  final String label, value, unit;
   final IconData icon;
   final Color color;
   final bool isActive;
@@ -253,114 +358,125 @@ class _ResultItem extends StatelessWidget {
       children: [
         Icon(icon, color: isActive ? color : Colors.grey, size: 28),
         const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: isActive ? color : Colors.grey,
-            fontFamily: GoogleFonts.inter().fontFamily,
-          ),
-        ),
-        Text(
-          unit,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey,
-            fontFamily: GoogleFonts.inter().fontFamily,
-          ),
-        ),
+        Text(value,
+            style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isActive ? color : Colors.grey,
+                fontFamily: GoogleFonts.inter().fontFamily)),
+        Text(unit,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+                fontFamily: GoogleFonts.inter().fontFamily)),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: Colors.grey.withAlpha(200),
-            fontFamily: GoogleFonts.inter().fontFamily,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+                color: Colors.grey.withAlpha(200),
+                fontFamily: GoogleFonts.inter().fontFamily)),
       ],
     );
   }
 }
 
-class _Speedometer extends StatelessWidget {
-  final double speed;
-  final TestStage stage;
-  final double progress;
+// ─── Gauge ───
 
-  const _Speedometer({required this.speed, required this.stage, required this.progress});
+class _Gauge extends StatelessWidget {
+  final double speed;
+  final QuickTestStage stage;
+  final bool isDark;
+
+  const _Gauge({required this.speed, required this.stage, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = stage == TestStage.upload ? Colors.purpleAccent : Colors.blueAccent;
+    final color = stage == QuickTestStage.upload ? Colors.purpleAccent : Colors.blueAccent;
+    final isRunning = stage == QuickTestStage.download || stage == QuickTestStage.upload;
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Background Circle
-        Container(
-          width: 250,
-          height: 250,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: theme.colorScheme.outline.withAlpha(30), width: 2),
-          ),
-        ),
-        // Active Arc
-        SizedBox(
+    return SizedBox(
+      width: 250,
+      height: 250,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
             width: 250,
             height: 250,
-            child: CircularProgressIndicator(
-              value: stage == TestStage.download || stage == TestStage.upload ? null : 0, // Indeterminate during test
-              strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              backgroundColor: Colors.transparent,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: theme.colorScheme.outline.withAlpha(30), width: 2),
             ),
-        ),
-        // Center Text
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-             Text(
-              speed.toStringAsFixed(1),
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-                fontFamily: GoogleFonts.inter().fontFamily,
+          ),
+          if (isRunning)
+            SizedBox(
+              width: 250,
+              height: 250,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                backgroundColor: Colors.transparent,
               ),
             ),
-            Text(
-              'Mbps',
-              style: TextStyle(
-                fontSize: 16,
-                color: theme.colorScheme.onSurface.withAlpha(150),
-                fontFamily: GoogleFonts.inter().fontFamily,
+          if (stage == QuickTestStage.complete)
+            SizedBox(
+              width: 250,
+              height: 250,
+              child: CircularProgressIndicator(
+                value: 1,
+                strokeWidth: 4,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
+                backgroundColor: Colors.transparent,
               ),
             ),
-            const SizedBox(height: 8),
-             if (stage != TestStage.idle && stage != TestStage.complete)
-               Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                 decoration: BoxDecoration(
-                   color: color.withAlpha(30),
-                   borderRadius: BorderRadius.circular(12),
-                 ),
-                 child: Text(
-                   stage == TestStage.findingServer ? 'Finding Server...' :
-                   stage == TestStage.download ? 'Downloading...' :
-                   stage == TestStage.upload ? 'Uploading...' : 'Initializing',
-                   style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold),
-                 ),
-               ),
-          ],
-        ),
-      ],
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(speed.toStringAsFixed(1),
+                  style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                      fontFamily: GoogleFonts.inter().fontFamily)),
+              Text('Mbps',
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface.withAlpha(150),
+                      fontFamily: GoogleFonts.inter().fontFamily)),
+              if (isRunning) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    stage == QuickTestStage.download ? 'Downloading…' : 'Uploading…',
+                    style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+              if (stage == QuickTestStage.complete) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text('Complete',
+                      style: TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

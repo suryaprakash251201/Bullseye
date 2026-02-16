@@ -252,9 +252,13 @@ class _ConnectionTile extends ConsumerWidget {
                         children: [
                           Icon(Icons.link, size: 12, color: Colors.grey[400]),
                           const SizedBox(width: 4),
-                          Text(
-                            connection.connectionString,
-                            style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 12, color: Colors.grey[600]),
+                          Expanded(
+                            child: Text(
+                              connection.connectionString,
+                              style: TextStyle(fontFamily: GoogleFonts.inter().fontFamily,fontSize: 12, color: Colors.grey[600]),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                         ],
                       ),
