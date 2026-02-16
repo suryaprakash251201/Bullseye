@@ -1,8 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../../core/themes/app_theme.dart';
+import '../../../../core/themes/semantic_theme.dart';
 import '../providers/monitor_provider.dart';
 import '../providers/monitor_filter_provider.dart';
 import '../../../../shared/models/website_monitor.dart';
@@ -13,18 +12,18 @@ class MonitorsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final monitors = ref.watch(monitorsProvider);
 
     return Scaffold(
       body: SafeArea(
-        child: _buildBody(context, ref, monitors, isDark),
+        child: _buildBody(context, ref, monitors),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, List<WebsiteMonitor> monitors, bool isDark) {
+  Widget _buildBody(BuildContext context, WidgetRef ref, List<WebsiteMonitor> monitors) {
+    final theme = Theme.of(context);
+    final semantic = theme.extension<SemanticThemeColors>() ?? SemanticThemeColors.light;
     final filter = ref.watch(monitorFilterProvider);
     final up = monitors.where((m) => m.currentStatus == MonitorStatus.up).length;
     final down = monitors.where((m) => m.currentStatus == MonitorStatus.down).length;
@@ -51,31 +50,37 @@ class MonitorsScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 'Monitors',
-                style: GoogleFonts.inter(
-                  fontSize: 26,
+                style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF1A202C),
                 ),
               ),
             ),
-            _buildAddButton(context, isDark),
+            FilledButton.tonalIcon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddMonitorScreen()));
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           'Website & service monitoring',
-          style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white54 : const Color(0xFF718096)),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withAlpha(150),
+          ),
         ),
         const SizedBox(height: 20),
 
         // Summary Cards — tappable to filter
         Row(
           children: [
-            Expanded(child: _SummaryCard(label: 'Total', value: '${monitors.length}', icon: Icons.monitor_heart, color: AppTheme.cyan, isDark: isDark, isActive: filter == MonitorFilter.all, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.all))),
+            Expanded(child: _SummaryCard(label: 'Total', value: '${monitors.length}', icon: Icons.monitor_heart, color: theme.colorScheme.primary, isActive: filter == MonitorFilter.all, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.all))),
             const SizedBox(width: 12),
-            Expanded(child: _SummaryCard(label: 'Up', value: '$up', icon: Icons.arrow_upward, color: AppTheme.success, isDark: isDark, isActive: filter == MonitorFilter.up, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.up))),
+            Expanded(child: _SummaryCard(label: 'Up', value: '$up', icon: Icons.arrow_upward, color: semantic.success, isActive: filter == MonitorFilter.up, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.up))),
             const SizedBox(width: 12),
-            Expanded(child: _SummaryCard(label: 'Down', value: '$down', icon: Icons.arrow_downward, color: AppTheme.error, isDark: isDark, isActive: filter == MonitorFilter.down, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.down))),
+            Expanded(child: _SummaryCard(label: 'Down', value: '$down', icon: Icons.arrow_downward, color: semantic.error, isActive: filter == MonitorFilter.down, onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.down))),
           ],
         ),
         const SizedBox(height: 16),
@@ -89,9 +94,9 @@ class MonitorsScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: (filter == MonitorFilter.up ? AppTheme.success : AppTheme.error).withOpacity(isDark ? 0.15 : 0.1),
+                    color: (filter == MonitorFilter.up ? semantic.success : semantic.error).withAlpha(30),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: (filter == MonitorFilter.up ? AppTheme.success : AppTheme.error).withOpacity(0.3)),
+                    border: Border.all(color: (filter == MonitorFilter.up ? semantic.success : semantic.error).withAlpha(80)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -99,30 +104,29 @@ class MonitorsScreen extends ConsumerWidget {
                       Icon(
                         filter == MonitorFilter.up ? Icons.arrow_circle_up : Icons.arrow_circle_down,
                         size: 16,
-                        color: filter == MonitorFilter.up ? AppTheme.success : AppTheme.error,
+                        color: filter == MonitorFilter.up ? semantic.success : semantic.error,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Showing: $filterLabel (${filteredMonitors.length})',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: filter == MonitorFilter.up ? AppTheme.success : AppTheme.error,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: filter == MonitorFilter.up ? semantic.success : semantic.error,
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.all),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkElevated : const Color(0xFFF0F2F5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.close, size: 14, color: isDark ? Colors.white54 : const Color(0xFF718096)),
+                IconButton.filled(
+                  onPressed: () => ref.read(monitorFilterProvider.notifier).set(MonitorFilter.all),
+                  icon: const Icon(Icons.close, size: 16),
+                  style: IconButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(28, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    foregroundColor: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -131,9 +135,9 @@ class MonitorsScreen extends ConsumerWidget {
 
         // Monitor list
         if (filteredMonitors.isEmpty)
-          _EmptyState(isDark: isDark, filter: filter),
+          _EmptyState(filter: filter),
         for (final monitor in filteredMonitors) ...[
-          _EndpointCard(monitor: monitor, isDark: isDark, onDelete: () {
+          _EndpointCard(monitor: monitor, onDelete: () {
             ref.read(monitorsProvider.notifier).removeMonitor(monitor.id);
           }),
           const SizedBox(height: 12),
@@ -142,39 +146,17 @@ class MonitorsScreen extends ConsumerWidget {
       ],
     );
   }
-
-  Widget _buildAddButton(BuildContext context, bool isDark) {
-    return Material(
-      color: AppTheme.cyan.withOpacity(isDark ? 0.15 : 0.1),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddMonitorScreen()));
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.add, color: AppTheme.cyan, size: 18),
-              const SizedBox(width: 6),
-              Text('Add', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.cyan)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _EmptyState extends StatelessWidget {
-  final bool isDark;
   final MonitorFilter filter;
-  const _EmptyState({required this.isDark, this.filter = MonitorFilter.all});
+  const _EmptyState({this.filter = MonitorFilter.all});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = theme.extension<SemanticThemeColors>() ?? SemanticThemeColors.light;
+    
     final message = switch (filter) {
       MonitorFilter.all => 'No monitors yet',
       MonitorFilter.up => 'No monitors are currently up',
@@ -193,17 +175,22 @@ class _EmptyState extends StatelessWidget {
           Icon(
             filter == MonitorFilter.down ? Icons.check_circle_outline : Icons.monitor_heart_outlined,
             size: 56,
-            color: filter == MonitorFilter.down ? AppTheme.success.withOpacity(0.5) : (isDark ? Colors.white24 : const Color(0xFFA0AEC0)),
+            color: filter == MonitorFilter.down ? semantic.success.withAlpha(128) : theme.colorScheme.outline,
           ),
           const SizedBox(height: 16),
           Text(
             message,
-            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white54 : const Color(0xFF4A5568)),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white38 : const Color(0xFF718096)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(150),
+            ),
           ),
         ],
       ),
@@ -216,29 +203,27 @@ class _SummaryCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  final bool isDark;
   final bool isActive;
   final VoidCallback? onTap;
 
-  const _SummaryCard({required this.label, required this.value, required this.icon, required this.color, required this.isDark, this.isActive = false, this.onTap});
+  const _SummaryCard({required this.label, required this.value, required this.icon, required this.color, this.isActive = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(isDark ? 0.15 : 0.08) : (isDark ? AppTheme.darkCard : AppTheme.lightCard),
+          color: isActive ? color.withAlpha(30) : (theme.cardTheme.color ?? theme.colorScheme.surface),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isActive ? color.withOpacity(0.6) : (isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+            color: isActive ? color.withAlpha(150) : (theme.cardTheme.shape as RoundedRectangleBorder?)?.side.color ?? Colors.transparent,
             width: isActive ? 1.5 : 1,
           ),
-          boxShadow: isDark ? null : [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
         ),
         child: Column(
           children: [
@@ -246,10 +231,12 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF1A202C)),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 2),
-            Text(label, style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white54 : const Color(0xFF718096))),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(150))),
           ],
         ),
       ),
@@ -260,24 +247,22 @@ class _SummaryCard extends StatelessWidget {
 class _EndpointCard extends StatelessWidget {
   final WebsiteMonitor monitor;
   final VoidCallback onDelete;
-  final bool isDark;
 
-  const _EndpointCard({required this.monitor, required this.onDelete, required this.isDark});
+  const _EndpointCard({required this.monitor, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = theme.extension<SemanticThemeColors>() ?? SemanticThemeColors.light;
     final isUp = monitor.currentStatus == MonitorStatus.up;
-    final statusColor = isUp ? AppTheme.success : AppTheme.error;
+    final statusColor = isUp ? semantic.success : semantic.error;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
-        boxShadow: isDark ? null : [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
+        border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(80)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,38 +275,45 @@ class _EndpointCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 6)],
+                  boxShadow: [BoxShadow(color: statusColor.withAlpha(100), blurRadius: 6)],
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   monitor.name,
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1A202C)),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
+                  color: statusColor.withAlpha(30),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   isUp ? 'UP' : 'DOWN',
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: onDelete,
-                child: Icon(Icons.delete_outline, color: isDark ? Colors.white38 : const Color(0xFFA0AEC0), size: 20),
+                child: Icon(Icons.delete_outline, color: theme.colorScheme.onSurface.withAlpha(100), size: 20),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             monitor.url,
-            style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white38 : const Color(0xFF718096)),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(150),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -333,11 +325,15 @@ class _EndpointCard extends StatelessWidget {
                 children: [
                   Text(
                     '${monitor.averageResponseTime?.inMilliseconds ?? '--'}ms',
-                    style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF1A202C)),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     'Response time',
-                    style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF718096)),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(150),
+                    ),
                   ),
                 ],
               ),
@@ -354,10 +350,10 @@ class _EndpointCard extends StatelessWidget {
                       LineChartBarData(
                         spots: _generateSpots(),
                         isCurved: true,
-                        color: AppTheme.cyan,
+                        color: theme.colorScheme.primary,
                         barWidth: 2,
                         dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(show: true, color: AppTheme.cyan.withOpacity(0.1)),
+                        belowBarData: BarAreaData(show: true, color: theme.colorScheme.primary.withAlpha(30)),
                       ),
                     ],
                   ),

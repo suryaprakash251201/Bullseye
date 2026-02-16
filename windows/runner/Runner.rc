@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.bullseye" "\0"
-            VALUE "FileDescription", "Bullseye" "\0"
+            VALUE "CompanyName", "com.cytroksys" "\0"
+            VALUE "FileDescription", "SysAdmin Tools" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "bullseye" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.bullseye. All rights reserved." "\0"
-            VALUE "OriginalFilename", "bullseye.exe" "\0"
-            VALUE "ProductName", "Bullseye" "\0"
+            VALUE "InternalName", "sysadmin_tools" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.cytroksys. All rights reserved." "\0"
+            VALUE "OriginalFilename", "sysadmin_tools.exe" "\0"
+            VALUE "ProductName", "SysAdmin Tools" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

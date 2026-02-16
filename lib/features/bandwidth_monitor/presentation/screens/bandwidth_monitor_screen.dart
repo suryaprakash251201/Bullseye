@@ -188,7 +188,7 @@ class _BandwidthMonitorScreenState extends ConsumerState<BandwidthMonitorScreen>
                 child: _SpeedCard(
                   icon: Icons.arrow_downward,
                   label: 'Download',
-                  speed: Formatters.formatBytes(currentDown.toInt()) + '/s',
+                  speed: '${Formatters.formatBytes(currentDown.toInt())}/s',
                   color: AppTheme.info,
                 ),
               ),
@@ -197,7 +197,7 @@ class _BandwidthMonitorScreenState extends ConsumerState<BandwidthMonitorScreen>
                 child: _SpeedCard(
                   icon: Icons.arrow_upward,
                   label: 'Upload',
-                  speed: Formatters.formatBytes(currentUp.toInt()) + '/s',
+                  speed: '${Formatters.formatBytes(currentUp.toInt())}/s',
                   color: AppTheme.success,
                 ),
               ),

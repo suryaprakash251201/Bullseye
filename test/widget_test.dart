@@ -8,7 +8,7 @@ import 'package:sysadmin_tools/main.dart';
 void main() {
   testWidgets('App launches smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(child: SysAdminToolsApp()),
+      const ProviderScope(child: BullseyeApp()),
     );
     await tester.pumpAndSettle();
 

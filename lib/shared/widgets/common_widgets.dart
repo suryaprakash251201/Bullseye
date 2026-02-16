@@ -114,7 +114,7 @@ class ToolCard extends StatelessWidget {
                     child: Icon(icon, color: color, size: 24),
                   ),
                   const Spacer(),
-                  if (trailing != null) trailing!,
+                  ?trailing,
                 ],
               ),
               const SizedBox(height: 12),
@@ -167,7 +167,7 @@ class StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.cardTheme.color,
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
