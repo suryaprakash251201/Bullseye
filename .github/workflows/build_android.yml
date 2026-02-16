@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Fix Gradle Permissions
+        run: chmod +x android/gradlew
+
       - name: Build APK
         run: flutter build apk --release
 
