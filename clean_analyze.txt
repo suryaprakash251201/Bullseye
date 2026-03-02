@@ -1,0 +1,12 @@
+﻿Analyzing Project 4...                                          
+
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\settings\presentation\screens\settings_screen.dart:341:17 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\settings\presentation\screens\settings_screen.dart:681:15 - deprecated_member_use
+  error - The getter 'easeOutElastic' isn't defined for the type 'Curves' - lib\features\splash\presentation\screens\splash_screen.dart:29:58 - undefined_getter
+  error - Undefined name 'AppTheme' - lib\features\splash\presentation\screens\splash_screen.dart:86:30 - undefined_identifier
+  error - Undefined name 'AppTheme' - lib\features\splash\presentation\screens\splash_screen.dart:91:30 - undefined_identifier
+  error - Undefined name 'AppTheme' - lib\features\splash\presentation\screens\splash_screen.dart:109:26 - undefined_identifier
+warning - Unused import: '../../../../shared/models/website_monitor.dart' - lib\features\website_monitor\presentation\screens\monitor_logs_screen.dart:6:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\features\website_monitor\presentation\screens\monitor_logs_screen.dart:117:43 - unnecessary_underscores
+warning - Unused import: 'core/providers/security_provider.dart' - lib\main.dart:9:8 - unused_import
+

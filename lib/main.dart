@@ -6,9 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'core/themes/app_theme.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/font_scale_provider.dart';
-import 'core/providers/security_provider.dart';
-import 'config/main_shell.dart';
-import 'features/settings/presentation/screens/lock_screen.dart';
+import 'features/splash/presentation/screens/splash_screen.dart';
 
 // Feature screens
 import 'features/ssh/presentation/screens/ssh_client_screen.dart';
@@ -73,7 +71,6 @@ class BullseyeApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
     final fontScale = ref.watch(fontScaleProvider);
-    final security = ref.watch(securityProvider);
 
     return MaterialApp(
       title: 'Bullseye',
@@ -90,7 +87,7 @@ class BullseyeApp extends ConsumerWidget {
           child: child!,
         );
       },
-      home: security.isLocked ? const LockScreen() : const MainShell(),
+      home: const SplashScreen(),
       routes: {
         '/ssh': (context) => const SSHClientScreen(),
         '/ftp': (context) => const FTPClientScreen(),

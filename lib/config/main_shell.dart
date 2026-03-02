@@ -47,26 +47,40 @@ class MainShellState extends ConsumerState<MainShell> {
 
     return Scaffold(
       extendBody: true,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.02),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
+      body: Stack(
+        children: [
+          // Global Premium Background
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/dashboard_header_bg.png',
+              fit: BoxFit.cover,
             ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(currentTab),
-          child: _screens[currentTab],
-        ),
+          ),
+          
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.02),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(currentTab),
+                child: _screens[currentTab],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: currentTab,

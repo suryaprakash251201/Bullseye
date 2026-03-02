@@ -336,7 +336,9 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 value: theme,
+                // ignore: deprecated_member_use
                 groupValue: current,
+                // ignore: deprecated_member_use
                 onChanged: (v) {
                   if (v != null) {
                     ref.read(terminalThemeProvider.notifier).setTheme(v);
@@ -675,7 +677,9 @@ class SettingsScreen extends ConsumerWidget {
             return RadioListTile<AutoLockDuration>(
               title: Text(label),
               value: duration,
+              // ignore: deprecated_member_use
               groupValue: security.autoLockDuration,
+              // ignore: deprecated_member_use
               onChanged: (v) {
                 if (v != null) {
                   ref.read(securityProvider.notifier).setAutoLockDuration(v);
