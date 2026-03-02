@@ -51,6 +51,16 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Add Connection',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddConnectionScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
             onPressed: () async {
               final selected = await showSearch<ConnectionProfile?>(
@@ -111,19 +121,6 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> with Sing
           _ConnectionList(connections: ftpConns),
           _ConnectionList(connections: sftpConns),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddConnectionScreen()),
-          );
-        },
-        icon: const Icon(Icons.add_link),
-        label: const Text('Add Connection'),
-        elevation: 4,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
       ),
     );
   }

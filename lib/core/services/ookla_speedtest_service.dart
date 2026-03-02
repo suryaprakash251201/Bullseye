@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:speed_test_dart/speed_test_dart.dart';
 
 final ooklaSpeedtestServiceProvider = Provider<OoklaSpeedtestService>((ref) {
   return OoklaSpeedtestService();
@@ -131,13 +132,8 @@ class OoklaSpeedtestService {
     if (!_isAvailable) {
       await checkAvailability();
       if (!_isAvailable) {
-        return OoklaSpeedtestResult(
-          error: 'Ookla Speedtest CLI is not installed.\n\n'
-              'Install it from: https://www.speedtest.net/apps/cli\n\n'
-              'Windows: winget install Ookla.Speedtest.CLI\n'
-              'macOS: brew install speedtest-cli\n'
-              'Linux: See https://www.speedtest.net/apps/cli',
-        );
+        // Fall back to pure-Dart speed test
+        return _runDartFallback(onProgress: onProgress);
       }
     }
 
@@ -334,5 +330,57 @@ class OoklaSpeedtestService {
       externalIp: externalIp,
       resultUrl: resultUrl,
     );
+  }
+
+  /// Pure-Dart fallback using speed_test_dart package
+  Future<OoklaSpeedtestResult> _runDartFallback({
+    void Function(SpeedtestStage stage, String message, double? progress)? onProgress,
+  }) async {
+    onProgress?.call(SpeedtestStage.checkingCli, 'Ookla CLI not found — using Dart speed test...', null);
+
+    try {
+      final tester = SpeedTestDart();
+
+      // Get settings and servers
+      onProgress?.call(SpeedtestStage.selectingServer, 'Fetching server list...', null);
+      final settings = await tester.getSettings();
+      final servers = settings.servers;
+      if (servers.isEmpty) {
+        return OoklaSpeedtestResult(error: 'No speed test servers found');
+      }
+
+      onProgress?.call(SpeedtestStage.selectingServer, 'Finding best server...', null);
+      final bestServers = await tester.getBestServers(servers: servers);
+      if (bestServers.isEmpty) {
+        return OoklaSpeedtestResult(error: 'Could not find a suitable server');
+      }
+
+      final bestServer = bestServers.first;
+
+      // Test download
+      onProgress?.call(SpeedtestStage.testingDownload, 'Testing download speed...', 0.3);
+      final downloadSpeed = await tester.testDownloadSpeed(servers: bestServers);
+
+      // Test upload  
+      onProgress?.call(SpeedtestStage.testingUpload, 'Testing upload speed...', 0.7);
+      final uploadSpeed = await tester.testUploadSpeed(servers: bestServers);
+
+      onProgress?.call(SpeedtestStage.complete, 'Test complete!', 1.0);
+
+      return OoklaSpeedtestResult(
+        downloadMbps: downloadSpeed,
+        uploadMbps: uploadSpeed,
+        pingMs: bestServer.latency,
+        jitterMs: 0,
+        serverName: bestServer.name,
+        serverLocation: bestServer.country,
+        serverHost: bestServer.url,
+        serverId: bestServer.id,
+        isp: 'Dart Fallback Engine',
+      );
+    } catch (e) {
+      onProgress?.call(SpeedtestStage.error, 'Speed test failed: $e', null);
+      return OoklaSpeedtestResult(error: 'Dart speed test failed: $e');
+    }
   }
 }

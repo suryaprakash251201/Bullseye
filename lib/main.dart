@@ -1,11 +1,14 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/themes/app_theme.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/providers/font_scale_provider.dart';
+import 'core/providers/security_provider.dart';
 import 'config/main_shell.dart';
+import 'features/settings/presentation/screens/lock_screen.dart';
 
 // Feature screens
 import 'features/ssh/presentation/screens/ssh_client_screen.dart';
@@ -34,13 +37,15 @@ import 'features/connections/presentation/screens/add_connection_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive
+  // Initialize Hive (primary local storage)
   await Hive.initFlutter();
   await Hive.openBox('connections');
   await Hive.openBox('monitors');
   await Hive.openBox('history');
   await Hive.openBox('settings');
   await Hive.openBox('snippets');
+
+  // Firebase REST service is initialized lazily via Riverpod
 
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
@@ -67,6 +72,8 @@ class BullseyeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final fontScale = ref.watch(fontScaleProvider);
+    final security = ref.watch(securityProvider);
 
     return MaterialApp(
       title: 'Bullseye',
@@ -74,7 +81,16 @@ class BullseyeApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: const MainShell(),
+      builder: (context, child) {
+        // Apply font scale via MediaQuery — safe even when TextStyle.fontSize is null
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(fontScale),
+          ),
+          child: child!,
+        );
+      },
+      home: security.isLocked ? const LockScreen() : const MainShell(),
       routes: {
         '/ssh': (context) => const SSHClientScreen(),
         '/ftp': (context) => const FTPClientScreen(),

@@ -31,29 +31,49 @@ class _IpGeolocationScreenState extends State<IpGeolocationScreen> {
   }
 
   Future<void> _lookup(String ip) async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-      _result = null;
-    });
+  setState(() {
+    _isLoading = true;
+    _error = '';
+    _result = null;
+  });
 
-    try {
-      final target = ip.trim().isEmpty ? '' : '/$ip';
-      final response = await _dio.get('http://ip-api.com/json$target?fields=status,message,continent,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,query,mobile,proxy,hosting');
+  try {
+    final target = ip.trim().isEmpty ? '' : '/$ip';
+    final response = await _dio.get(
+      'https://ipwho.is$target',
+      options: Options(validateStatus: (_) => true),
+    );
 
-      if (response.data['status'] == 'fail') {
-        setState(() => _error = response.data['message'] ?? 'Lookup failed');
-      } else {
-        setState(() => _result = response.data);
-      }
-    } on DioException catch (e) {
-      setState(() => _error = e.message ?? 'Network error');
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      setState(() => _isLoading = false);
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == true) {
+      // Map to a consistent format
+      setState(() => _result = {
+        'query': data['ip'] ?? '',
+        'country': data['country'] ?? '',
+        'countryCode': data['country_code'] ?? '',
+        'region': data['region_code'] ?? '',
+        'regionName': data['region'] ?? '',
+        'city': data['city'] ?? '',
+        'zip': data['postal'] ?? '',
+        'lat': data['latitude'] ?? 0,
+        'lon': data['longitude'] ?? 0,
+        'timezone': data['timezone']?['id'] ?? '',
+        'isp': data['connection']?['isp'] ?? '',
+        'org': data['connection']?['org'] ?? '',
+        'as': data['connection']?['asn']?.toString() ?? '',
+        'continent': data['continent'] ?? '',
+      });
+    } else {
+      setState(() => _error = data['message'] ?? 'Lookup failed');
     }
+  } on DioException catch (e) {
+    setState(() => _error = e.message ?? 'Network error');
+  } catch (e) {
+    setState(() => _error = e.toString());
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
 
   @override
   void dispose() {

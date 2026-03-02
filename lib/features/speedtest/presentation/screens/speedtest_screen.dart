@@ -238,9 +238,8 @@ class SpeedTestScreen extends ConsumerWidget {
                 child: _Gauge(speed: st.currentSpeed, stage: st.stage, isDark: isDark),
               ),
             ),
-            const SizedBox(height: 20),
-            Expanded(
-              flex: 2,
+            const SizedBox(height: 16),
+            Flexible(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 decoration: BoxDecoration(
@@ -254,77 +253,80 @@ class SpeedTestScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 32),
-                    if (st.error.isNotEmpty)
-                      Container(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 24),
+                      if (st.error.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(st.error,
+                              style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _ResultItem(
+                            label: 'DOWNLOAD',
+                            value: st.downloadMbps.toStringAsFixed(1),
+                            unit: 'Mbps',
+                            icon: Icons.download,
+                            color: Colors.blueAccent,
+                            isActive: st.stage == QuickTestStage.download ||
+                                st.stage == QuickTestStage.complete,
+                          ),
+                          _ResultItem(
+                            label: 'UPLOAD',
+                            value: st.uploadMbps.toStringAsFixed(1),
+                            unit: 'Mbps',
+                            icon: Icons.upload,
+                            color: Colors.purpleAccent,
+                            isActive: st.stage == QuickTestStage.upload ||
+                                st.stage == QuickTestStage.complete,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        st.stage == QuickTestStage.idle
+                            ? 'Tap GO to run a quick speed test'
+                            : st.stage == QuickTestStage.complete
+                                ? 'Test complete'
+                                : st.stage == QuickTestStage.download
+                                    ? 'Testing download…'
+                                    : 'Testing upload…',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(st.error,
-                            style: TextStyle(color: theme.colorScheme.onErrorContainer)),
-                      ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _ResultItem(
-                          label: 'DOWNLOAD',
-                          value: st.downloadMbps.toStringAsFixed(1),
-                          unit: 'Mbps',
-                          icon: Icons.download,
-                          color: Colors.blueAccent,
-                          isActive: st.stage == QuickTestStage.download ||
-                              st.stage == QuickTestStage.complete,
-                        ),
-                        _ResultItem(
-                          label: 'UPLOAD',
-                          value: st.uploadMbps.toStringAsFixed(1),
-                          unit: 'Mbps',
-                          icon: Icons.upload,
-                          color: Colors.purpleAccent,
-                          isActive: st.stage == QuickTestStage.upload ||
-                              st.stage == QuickTestStage.complete,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      st.stage == QuickTestStage.idle
-                          ? 'Tap GO to run a quick speed test'
-                          : st.stage == QuickTestStage.complete
-                              ? 'Test complete'
-                              : st.stage == QuickTestStage.download
-                                  ? 'Testing download…'
-                                  : 'Testing upload…',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withAlpha(150),
-                      ),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton(
-                        onPressed: st.isRunning
-                            ? null
-                            : () => ref.read(quickSpeedProvider.notifier).startTest(),
-                        child: Text(
-                          st.isRunning
-                              ? 'TESTING…'
-                              : st.stage == QuickTestStage.complete
-                                  ? 'TEST AGAIN'
-                                  : 'GO',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        height: 56,
+                        child: FilledButton(
+                          onPressed: st.isRunning
+                              ? null
+                              : () => ref.read(quickSpeedProvider.notifier).startTest(),
+                          child: Text(
+                            st.isRunning
+                                ? 'TESTING…'
+                                : st.stage == QuickTestStage.complete
+                                    ? 'TEST AGAIN'
+                                    : 'GO',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),

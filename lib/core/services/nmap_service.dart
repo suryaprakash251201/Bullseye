@@ -234,9 +234,12 @@ class NmapService {
     if (!_isAvailable) {
       await checkAvailability();
       if (!_isAvailable) {
-        return NmapScanResult(
-          error: 'Nmap is not installed. Please install Nmap to use this feature.',
-          scanCommand: 'nmap ${scanType.toArgs(target).join(' ')}',
+        // Fallback to pure-Dart scanner
+        return fallbackScan(
+          target: target,
+          scanType: scanType,
+          customPorts: customPorts,
+          onOutput: onOutput,
         );
       }
     }
@@ -469,5 +472,164 @@ class NmapService {
       blocks.add(match.group(0) ?? '');
     }
     return blocks;
+  }
+
+  /// Pure-Dart fallback scanner using Socket.connect()
+  /// Used when Nmap CLI is not installed
+  Future<NmapScanResult> fallbackScan({
+    required String target,
+    required NmapScanType scanType,
+    String? customPorts,
+    void Function(String line)? onOutput,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final commandStr = '[Dart Fallback] Port scan on $target';
+    onOutput?.call('Nmap not found — using built-in Dart scanner...');
+
+    // For ping-only scan types, just check host reachability
+    if (scanType == NmapScanType.ping || scanType == NmapScanType.quickTraceroute) {
+      try {
+        onOutput?.call('Checking host reachability...');
+        final sw = Stopwatch()..start();
+        final addresses = await InternetAddress.lookup(target);
+        sw.stop();
+        if (addresses.isNotEmpty) {
+          stopwatch.stop();
+          onOutput?.call('Host $target is up (${sw.elapsedMilliseconds}ms)');
+          return NmapScanResult(
+            hosts: [
+              NmapHostResult(
+                address: addresses.first.address,
+                hostname: target,
+                state: 'up',
+                latency: sw.elapsed,
+              ),
+            ],
+            scanDuration: stopwatch.elapsed,
+            rawOutput: 'Host $target is up. Latency: ${sw.elapsedMilliseconds}ms',
+            scanCommand: commandStr,
+          );
+        }
+      } catch (e) {
+        stopwatch.stop();
+        return NmapScanResult(
+          hosts: [NmapHostResult(address: target, state: 'down')],
+          scanDuration: stopwatch.elapsed,
+          rawOutput: 'Host $target appears to be down: $e',
+          scanCommand: commandStr,
+        );
+      }
+    }
+
+    // Port scan
+    List<int> ports;
+    if (customPorts != null && customPorts.isNotEmpty) {
+      ports = _parsePortList(customPorts);
+    } else {
+      // Common ports
+      ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 8080, 8443, 8888];
+    }
+
+    final resultPorts = <NmapPortResult>[];
+    final outputBuffer = StringBuffer();
+    outputBuffer.writeln('Dart fallback scanner — scanning ${ports.length} ports on $target');
+    onOutput?.call('Scanning ${ports.length} ports on $target...');
+
+    // Resolve hostname first
+    String resolvedAddress = target;
+    try {
+      final addresses = await InternetAddress.lookup(target);
+      if (addresses.isNotEmpty) {
+        resolvedAddress = addresses.first.address;
+      }
+    } catch (_) {}
+
+    // Scan ports in batches of 20
+    for (int i = 0; i < ports.length; i += 20) {
+      final batch = ports.skip(i).take(20).toList();
+      final futures = batch.map((port) async {
+        try {
+          final sw = Stopwatch()..start();
+          final socket = await Socket.connect(target, port, timeout: const Duration(seconds: 2));
+          sw.stop();
+          socket.destroy();
+          final service = _guessService(port);
+          onOutput?.call('Port $port ($service): OPEN (${sw.elapsedMilliseconds}ms)');
+          return NmapPortResult(
+            port: port,
+            protocol: 'tcp',
+            state: 'open',
+            serviceName: service,
+          );
+        } catch (_) {
+          return NmapPortResult(
+            port: port,
+            protocol: 'tcp',
+            state: 'closed',
+            serviceName: _guessService(port),
+          );
+        }
+      });
+
+      final batchResults = await Future.wait(futures);
+      resultPorts.addAll(batchResults);
+      onOutput?.call('Scanned ${(i + batch.length).clamp(0, ports.length)}/${ports.length} ports...');
+    }
+
+    stopwatch.stop();
+    final openPorts = resultPorts.where((p) => p.isOpen).length;
+    outputBuffer.writeln('Scan complete: $openPorts open ports found in ${stopwatch.elapsed.inSeconds}s');
+    onOutput?.call('Done: $openPorts open ports found');
+
+    return NmapScanResult(
+      hosts: [
+        NmapHostResult(
+          address: resolvedAddress,
+          hostname: target != resolvedAddress ? target : null,
+          state: 'up',
+          ports: resultPorts,
+        ),
+      ],
+      scanDuration: stopwatch.elapsed,
+      rawOutput: outputBuffer.toString(),
+      scanCommand: commandStr,
+    );
+  }
+
+  List<int> _parsePortList(String text) {
+    final ports = <int>{};
+    for (final part in text.split(',')) {
+      final trimmed = part.trim();
+      if (trimmed.contains('-')) {
+        final range = trimmed.split('-');
+        if (range.length == 2) {
+          final start = int.tryParse(range[0].trim());
+          final end = int.tryParse(range[1].trim());
+          if (start != null && end != null && start <= end && start >= 1 && end <= 65535) {
+            for (int p = start; p <= end; p++) {
+              ports.add(p);
+            }
+          }
+        }
+      } else {
+        final port = int.tryParse(trimmed);
+        if (port != null && port >= 1 && port <= 65535) {
+          ports.add(port);
+        }
+      }
+    }
+    return ports.toList()..sort();
+  }
+
+  String _guessService(int port) {
+    const services = {
+      21: 'ftp', 22: 'ssh', 23: 'telnet', 25: 'smtp', 53: 'dns',
+      80: 'http', 110: 'pop3', 135: 'msrpc', 139: 'netbios-ssn',
+      143: 'imap', 443: 'https', 445: 'microsoft-ds', 993: 'imaps',
+      995: 'pop3s', 1433: 'ms-sql-s', 1521: 'oracle', 3306: 'mysql',
+      3389: 'ms-wbt-server', 5432: 'postgresql', 5900: 'vnc',
+      8080: 'http-proxy', 8443: 'https-alt', 8888: 'sun-answerbook',
+    };
+    return services[port] ?? 'unknown';
   }
 }

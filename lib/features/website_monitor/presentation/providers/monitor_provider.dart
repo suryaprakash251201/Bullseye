@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/website_monitor.dart';
 import '../../../../core/services/network_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/notification_service.dart';
 
 final monitorsProvider = NotifierProvider<MonitorsNotifier, List<WebsiteMonitor>>(MonitorsNotifier.new);
 
@@ -142,6 +143,13 @@ class MonitorsNotifier extends Notifier<List<WebsiteMonitor>> {
       );
     }
 
+    // Check for status change and send notification
+    final previousStatus = monitor.currentStatus;
+    final newIsUp = result.isUp;
+    final statusChanged = monitor.history.isNotEmpty &&
+        ((previousStatus == MonitorStatus.up && !newIsUp) ||
+         (previousStatus == MonitorStatus.down && newIsUp));
+
     final history = [...monitor.history, result];
     // Keep only last 1000 entries
     final trimmedHistory = history.length > 1000
@@ -150,6 +158,27 @@ class MonitorsNotifier extends Notifier<List<WebsiteMonitor>> {
 
     final updatedMonitor = monitor.copyWith(history: trimmedHistory);
     await updateMonitor(updatedMonitor);
+
+    // Send notification on status change
+    if (statusChanged) {
+      try {
+        final notificationService = ref.read(notificationServiceProvider);
+        if (newIsUp) {
+          await notificationService.showMonitorUpNotification(
+            monitorName: monitor.name,
+            url: monitor.url,
+          );
+        } else {
+          await notificationService.showMonitorDownNotification(
+            monitorName: monitor.name,
+            url: monitor.url,
+            error: result.error,
+          );
+        }
+      } catch (_) {
+        // Notification service may not be available on all platforms
+      }
+    }
   }
 
   Future<void> checkAll() async {

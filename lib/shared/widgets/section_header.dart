@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/themes/app_theme.dart';
 
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
@@ -13,21 +14,35 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: TextStyle(
-              fontFamily: GoogleFonts.inter().fontFamily,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
-              letterSpacing: 1.2,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 16,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title.toUpperCase(),
+                style: TextStyle(
+                  fontFamily: GoogleFonts.inter().fontFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white60 : const Color(0xFF718096),
+                  letterSpacing: 1.3,
+                ),
+              ),
+            ],
           ),
           // ignore: use_null_aware_elements
           if (action != null) action!,

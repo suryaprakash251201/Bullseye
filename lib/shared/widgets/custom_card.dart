@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/themes/app_theme.dart';
 
-class CustomCard extends StatelessWidget {
+class CustomCard extends StatefulWidget {
   const CustomCard({
     super.key,
     required this.title,
@@ -18,21 +19,62 @@ class CustomCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<CustomCard> createState() => _CustomCardState();
+}
+
+class _CustomCardState extends State<CustomCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final effectiveIconColor = iconColor ?? colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final effectiveIconColor = widget.iconColor ?? colorScheme.primary;
 
-    return Material(
-      color: theme.cardTheme.color,
-      shape: theme.cardTheme.shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: theme.cardTheme.elevation ?? 0,
-      shadowColor: theme.cardTheme.shadowColor,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: theme.cardTheme.shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: child,
+      ),
+      child: GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap();
+        },
+        onTapCancel: () => _controller.reverse(),
         child: Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: isDark ? AppTheme.cardGradientDark : AppTheme.cardGradientLight,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white.withAlpha(8) : const Color(0xFFE2E8F0),
+              width: 0.5,
+            ),
+            boxShadow: isDark ? AppTheme.cardShadowDark : AppTheme.cardShadowLight,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -41,14 +83,18 @@ class CustomCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: effectiveIconColor.withAlpha(30),
+                  gradient: LinearGradient(
+                    colors: [effectiveIconColor.withAlpha(35), effectiveIconColor.withAlpha(15)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: effectiveIconColor, size: 24),
+                child: Icon(widget.icon, color: effectiveIconColor, size: 24),
               ),
               const Spacer(),
               Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   fontFamily: GoogleFonts.inter().fontFamily,
                   fontSize: 14,
@@ -60,7 +106,7 @@ class CustomCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                subtitle,
+                widget.subtitle,
                 style: TextStyle(
                   fontFamily: GoogleFonts.inter().fontFamily,
                   fontSize: 12,
